@@ -20,6 +20,7 @@ import io.anuke.mindustry.maps.Maps;
 import io.anuke.mindustry.io.SaveIO;
 import io.anuke.mindustry.net.Administration;
 
+import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.MessageBuilder;
 import org.javacord.api.entity.message.MessageAttachment;
 
@@ -101,17 +102,16 @@ public class ServerCommands {
                 @SuppressWarnings("unchecked")
                 public void run(Context ctx) {
                     if (ctx.args.length < 2) {
-                        ctx.reply("Not enough arguments, use `changemap <number|name>`");
+                        ctx.reply("Not enough arguments, use `.changemap <number|name>`");
                         return;
                     }
-                    Map found = getMapBySelector(ctx.message.trim());
+                    Map found = Utils.getMapBySelector(ctx.message.trim());
                     if (found == null) {
                         ctx.reply("Map not found!");
                         return;
                     }
 
                     // TODO: use new MapProvider api or something
-
                     // step 1: grab the current maps list
                     Array<Map> mapsList;
                     try {
@@ -142,6 +142,9 @@ public class ServerCommands {
                     }
 
                     ctx.reply("Changed map to " + targetMap.name());
+
+                    // step 6: reload maps
+                    maps.reload();
 
                     /*
                     FileHandle temp = Core.settings.getDataDirectory().child("maps/temp");
@@ -203,6 +206,7 @@ public class ServerCommands {
                                 netServer.admins.banPlayer(p.uuid);
                                 ctx.reply("Banned " + p.name + "(#" + p.id + ") `" + p.con.address + "` successfully!");
                                 Call.onKick(p.con, "You've been banned by: " + ctx.author.getName() + ". Appeal at http://discord.mindustry.io");
+                                Call.sendChatMessage("[scarlet]" + Utils.escapeBackticks(p.name) + " has been banned.");
                             }
                         }
                     } else {
@@ -254,6 +258,7 @@ public class ServerCommands {
                         e.printStackTrace();
                     }
                     ctx.channel.sendMessage(f);
+                    f.delete();
                 }
             });
         }
@@ -268,7 +273,6 @@ public class ServerCommands {
                     if(ctx.args.length==2){ target = ctx.args[1]; } else {ctx.reply("Invalid arguments provided, use the following format: .kick <ip/id>"); return;}
 
                     int id = -1;
-                    boolean success = false;
                     try {
                         id = Integer.parseInt(target);
                     } catch (NumberFormatException ex) {}
@@ -277,10 +281,9 @@ public class ServerCommands {
                             if (p.con.address.equals(target) || p.id == id) {
                                 Call.onKick(p.con, "You've been kicked by: " + ctx.author.getName());
                                 ctx.reply("Kicked " + p.name + "(#" + p.id + ") `" + p.con.address + "` successfully.");
-                                success = true;
+                                Call.sendChatMessage("[scarlet]" + Utils.escapeBackticks(p.name) + " has been kicked.");
                             }
                         }
-                        if (!success){ ctx.reply("No such player ip/id is online."); }
                     } else {
                         ctx.reply("Not enough arguments / usage: `kick <id|ip>`");
                     }
@@ -313,6 +316,22 @@ public class ServerCommands {
                 }
             });
         }
+
+        if (data.has("manageMessages_role_id")) {
+            handler.registerCommand(new RoleRestrictedCommand("delete") {
+                {
+                    help = "Delete X amount of messages in the context channel";
+                    role = data.getString("manageMessages_role_id");
+                }
+                @Override
+                public void run(Context ctx) {
+                    int amt;
+                    if(ctx.args.length==2){ amt = Integer.parseInt(ctx.args[1]); } else {ctx.reply("Invalid arguments provided, use the following format: .delete <amount>"); return;}
+                    // TODO: make it delete 'amt' messages
+                }
+            });
+        }
+
         if (data.has("spyPlayers_role_id")) {
             handler.registerCommand(new RoleRestrictedCommand("playersinfo") {
                 {
@@ -382,7 +401,7 @@ public class ServerCommands {
                         ctx.reply("Not enough arguments, use `removemap <number|name>`");
                         return;
                     }
-                    Map found = getMapBySelector(ctx.message.trim());
+                    Map found = Utils.getMapBySelector(ctx.message.trim());
                     if (found == null) {
                         ctx.reply("Map not found");
                         return;
@@ -394,22 +413,5 @@ public class ServerCommands {
                 }
             });
         }
-    }
-
-    private Map getMapBySelector(String query) {
-        Map found = null;
-        try {
-            // try by number
-            found = maps.customMaps().get(Integer.parseInt(query));
-        } catch (Exception e) {
-            // try by name
-            for (Map m : maps.customMaps()) {
-                if (m.name().equals(query)) {
-                    found = m;
-                    break;
-                }
-            }
-        }
-        return found;
     }
 }
