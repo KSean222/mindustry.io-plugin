@@ -39,6 +39,24 @@ public class IoPlugin extends Plugin {
 
     //register event handlers and create variables in the constructor
     public IoPlugin() throws InterruptedException {
+
+        Events.on(EventType.PlayerConnect.class, event -> {
+            boolean kick = true;
+            for(int i = 0; i < event.player.name.length(); i++){
+                char c = event.player.name.charAt(i);
+                if(c < ' ' || c > '~'){
+                    kick = true;
+                    break;
+                }
+                if(!Character.isWhitespace(c)) {
+                    kick = false;
+                }
+            }
+            if(kick) {
+                Call.onKick(event.player.con, "You have an invalid name! Please use only alpha-numeric and symbol characters!");
+            }
+        });
+		
         try {
             String pureJson = Core.settings.getDataDirectory().child("mods/settings.json").readString();
             alldata = new JSONObject(new JSONTokener(pureJson));
