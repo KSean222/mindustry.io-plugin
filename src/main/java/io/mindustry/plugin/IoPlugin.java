@@ -85,36 +85,33 @@ public class IoPlugin extends Plugin {
                         messageBuffer.clear();
                     }
                 });
-
-                // anti nuke
-
-                Events.on(EventType.BuildSelectEvent.class, event -> {
-                    if (Utils.antiNukeEnabled) {
-                        try {
-                            Tile nukeTile = event.builder.buildRequest().tile();
-                            if (!event.breaking && event.builder.buildRequest().block == Blocks.thoriumReactor && event.builder instanceof Player) {
-                                Tile coreTile = ((Player) event.builder).getClosestCore().getTile();
-                                if (coreTile == null) {
-                                    return;
-                                }
-                                double distance = Utils.DistanceBetween(coreTile.x, coreTile.y, nukeTile.x, nukeTile.y);
-                                if (distance <= Utils.nukeDistance) {
-                                    Call.beginBreak(event.builder.getTeam(), event.tile.x, event.tile.y);
-                                    Call.onDeconstructFinish(event.tile, Blocks.thoriumReactor, ((Player) event.builder).id);
-                                    ((Player) event.builder).kill();
-                                    ((Player) event.builder).sendMessage("[scarlet]Too close to the core, please find a better spot.");
-                                    tc.sendMessage(((Player) event.builder).name + " tried nuking the core, but failed horribly and suffered a painful death.");
-                                }
-                            }
-                        } catch (Exception ignored) {}
-                    } else{
-                        Log.info("Caught a nuker, but not preventing since anti nuke is off.");
-                    }
-                });
-
-
             }
         }
+
+        // anti nuke
+
+        Events.on(EventType.BuildSelectEvent.class, event -> {
+            if (Utils.antiNukeEnabled) {
+                try {
+                    Tile nukeTile = event.builder.buildRequest().tile();
+                    if (!event.breaking && event.builder.buildRequest().block == Blocks.thoriumReactor || event.builder.buildRequest().block == Blocks.combustionGenerator || event.builder.buildRequest().block == Blocks.turbineGenerator || event.builder.buildRequest().block == Blocks.impactReactor && event.builder instanceof Player) {
+                        Tile coreTile = ((Player) event.builder).getClosestCore().getTile();
+                        if (coreTile == null) {
+                            return;
+                        }
+                        double distance = Utils.DistanceBetween(coreTile.x, coreTile.y, nukeTile.x, nukeTile.y);
+                        if (distance <= Utils.nukeDistance) {
+                            Call.beginBreak(event.builder.getTeam(), event.tile.x, event.tile.y);
+                            Call.onDeconstructFinish(event.tile, Blocks.thoriumReactor, ((Player) event.builder).id);
+                            ((Player) event.builder).kill();
+                            ((Player) event.builder).sendMessage("[scarlet]Too close to the core, please find a better spot.");
+                        }
+                    }
+                } catch (Exception ignored) {}
+            } else{
+                Log.info("Caught a nuker, but not preventing since anti nuke is off.");
+            }
+        });
 
     }
 
@@ -128,7 +125,7 @@ public class IoPlugin extends Plugin {
     @Override
     public void registerClientCommands(CommandHandler handler){
         if (api != null) {
-            handler.<Player>register("d", "<text...>", "Sends a message to moderators. (Use when a griefer is online)", (args, player) -> {
+            handler.<Player>register("d", "<text>", "Sends a message to moderators. (Use when a griefer is online)", (args, player) -> {
 
                 if (!data.has("dchannel_id")) {
                     player.sendMessage("[scarlet]This command is disabled.");
@@ -144,7 +141,21 @@ public class IoPlugin extends Plugin {
 
             });
 
-            handler.<Player>register("gr", "[player] [reason...]", "Report a griefer by id (use '/gr' to get a list of ids)", (args, player) -> {
+            handler.<Player>register("players", "Display all players and their ids", (args, player) -> {
+                StringBuilder builder = new StringBuilder();
+                builder.append("[orange]List of players: \n");
+                for (Player p : Vars.playerGroup.all()) {
+                    if(p.isAdmin) {
+                        builder.append("[scarlet]<ADMIN> ");
+                    } else{
+                        builder.append("[lightgray] ");
+                    }
+                    builder.append(p.name).append("[accent] (#").append(p.id).append(")\n");
+                }
+                player.sendMessage(builder.toString());
+            });
+
+            handler.<Player>register("gr", "<player> <reason", "Report a griefer by id (use '/gr' to get a list of ids)", (args, player) -> {
                 //https://github.com/Anuken/Mindustry/blob/master/core/src/io/anuke/mindustry/core/NetServer.java#L300-L351
                 if (!(data.has("channel_id") && data.has("role_id"))) {
                     player.sendMessage("[scarlet]This command is disabled.");
@@ -164,11 +175,14 @@ public class IoPlugin extends Plugin {
 
                 if (args.length == 0) {
                     StringBuilder builder = new StringBuilder();
-                    builder.append("[orange]List or reportable players: \n");
+                    builder.append("[orange]List of players: \n");
                     for (Player p : Vars.playerGroup.all()) {
-                        if (p.isAdmin || p.con == null) continue;
-
-                        builder.append("[lightgray] ").append(p.name).append("[accent] (#").append(p.id).append(")\n");
+                        if(p.isAdmin) {
+                            builder.append("[scarlet]<ADMIN> ");
+                        } else{
+                            builder.append("[lightgray] ");
+                        }
+                        builder.append(p.name).append("[accent] (#").append(p.id).append(")\n");
                     }
                     player.sendMessage(builder.toString());
                 } else {

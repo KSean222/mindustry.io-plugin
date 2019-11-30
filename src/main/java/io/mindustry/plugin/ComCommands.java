@@ -8,6 +8,7 @@ import io.anuke.arc.files.FileHandle;
 import io.anuke.mindustry.maps.Map;
 import org.javacord.api.entity.message.MessageBuilder;
 
+
 import io.anuke.mindustry.entities.type.Player;
 import io.anuke.mindustry.game.Team;
 import io.anuke.mindustry.game.Teams.TeamData;
@@ -28,12 +29,17 @@ public class ComCommands {
                 help = "Send a message to in-game chat";
             }
             public void run(Context ctx) {
+                ctx.message = Utils.escapeBackticks(ctx.message);
                 if (ctx.message == null) {
                     ctx.reply("No message given");
                     return;
                 }
-                Call.sendMessage("[sky]" + ctx.author.getName()+ " @discord >[] " + ctx.message);
-                ctx.reply("``" + ctx.author.getName() + "@discord > " + ctx.message + "``\nSent successfully.");
+                if (ctx.message.length() < Utils.chatMessageMaxSize) {
+                    Call.sendMessage("[sky]" + ctx.author.getName() + " @discord >[] " + ctx.message);
+                    ctx.reply("``" + ctx.author.getName() + "@discord > " + ctx.message + "``\nSent successfully.");
+                } else{
+                    ctx.reply("Message too big, please use a maximum of " + String.valueOf(Utils.chatMessageMaxSize) + " characters.");
+                }
             }
         });
         handler.registerCommand(new Command("map") {
@@ -54,12 +60,10 @@ public class ComCommands {
 
                 FileHandle mapFile = found.file;
 
-                //ctx.channel.sendMessage("Exported " + found.name(), mapFile.file());
                 EmbedBuilder embed = new EmbedBuilder()
                         .setTitle(Utils.escapeBackticks(found.name()))
                         .setDescription(Utils.escapeBackticks(found.description()))
-                        .setAuthor(Utils.escapeBackticks(found.author()))
-                        .setColor(Color.BLUE);
+                        .setAuthor(Utils.escapeBackticks(found.author()));
                 // TODO: .setImage(mapPreviewImage)
                 ctx.channel.sendMessage(embed, mapFile.file());
             }
@@ -72,7 +76,7 @@ public class ComCommands {
                 List<String> result = new ArrayList<>();
                 result.add("There are currently " + playerGroup.size() + " players online");
                 for (Player player : playerGroup.all()) {
-                    result.add(" * " + player.name + " (#" + player.id + ")");
+                    result.add(" * " + Utils.escapeBackticks(player.name) + " (#" + player.id + ")");
                 }
                 ctx.reply(new MessageBuilder().appendCode("", Utils.escapeBackticks(String.join("\n", result))));
             }
