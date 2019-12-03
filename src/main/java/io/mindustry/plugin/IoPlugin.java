@@ -30,11 +30,11 @@ import io.anuke.mindustry.plugin.Plugin;
 import io.anuke.mindustry.world.Tile;
 
 public class IoPlugin extends Plugin {
+    public static DiscordApi api = null;
     private final Long cooldownTime = 300L;
     private final String fileNotFoundErrorMessage = "File not found: config\\mods\\settings.json";
     private JSONObject alldata;
-    private JSONObject data; //token, channel_id, role_id
-    private DiscordApi api = null;
+    public static JSONObject data; //token, channel_id, role_id
     private HashMap<Long, String> cooldowns = new HashMap<Long, String>(); //uuid
 
     //register event handlers and create variables in the constructor
@@ -73,7 +73,7 @@ public class IoPlugin extends Plugin {
         bt.setDaemon(false);
         bt.start();
 
-        //live chat
+        // live chat
         if (data.has("live_chat_channel_id")) {
             TextChannel tc = this.getTextChannel(data.getString("live_chat_channel_id"));
             if (tc != null) {
@@ -112,6 +112,13 @@ public class IoPlugin extends Plugin {
                 Log.info("Caught a nuker, but not preventing since anti nuke is off.");
             }
         });
+
+        // welcome message
+        if(Utils.welcomeMessage!=null) {
+            Events.on(EventType.PlayerJoin.class, event -> {
+                event.player.sendMessage(Utils.welcomeMessage);
+            });
+        }
 
     }
 
@@ -155,7 +162,7 @@ public class IoPlugin extends Plugin {
                 player.sendMessage(builder.toString());
             });
 
-            handler.<Player>register("gr", "<player> <reason", "Report a griefer by id (use '/gr' to get a list of ids)", (args, player) -> {
+            handler.<Player>register("gr", "<player> <reason>", "Report a griefer by id (use '/gr' to get a list of ids)", (args, player) -> {
                 //https://github.com/Anuken/Mindustry/blob/master/core/src/io/anuke/mindustry/core/NetServer.java#L300-L351
                 if (!(data.has("channel_id") && data.has("role_id"))) {
                     player.sendMessage("[scarlet]This command is disabled.");
@@ -246,8 +253,8 @@ public class IoPlugin extends Plugin {
     }
 
 
-    public TextChannel getTextChannel(String id){
-        Optional<Channel> dc =  ((Optional<Channel>)this.api.getChannelById(id));
+    public static TextChannel getTextChannel(String id){
+        Optional<Channel> dc =  ((Optional<Channel>) api.getChannelById(id));
         if (!dc.isPresent()) {
             Log.err("[ERR!] discordplugin: channel not found!");
             return null;
@@ -261,7 +268,7 @@ public class IoPlugin extends Plugin {
     }
 
     public Role getRole(String id){
-        Optional<Role> r1 = this.api.getRoleById(id);
+        Optional<Role> r1 = api.getRoleById(id);
         if (!r1.isPresent()) {
             Log.err("[ERR!] discordplugin: adminrole not found!");
             return null;

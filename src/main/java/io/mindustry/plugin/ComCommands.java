@@ -1,12 +1,7 @@
 package io.mindustry.plugin;
 
-import java.awt.*;
-import java.util.ArrayList;
-import java.util.List;
-
 import io.anuke.arc.files.FileHandle;
 import io.anuke.mindustry.maps.Map;
-import org.javacord.api.entity.message.MessageBuilder;
 
 
 import io.anuke.mindustry.entities.type.Player;
@@ -26,7 +21,7 @@ public class ComCommands {
     public void registerCommands(DiscordCommands handler) {
         handler.registerCommand(new Command("chat") {
             {
-                help = "Send a message to in-game chat";
+                help = "<message> Sends a message to in-game chat.";
             }
             public void run(Context ctx) {
                 ctx.message = Utils.escapeBackticks(ctx.message);
@@ -44,11 +39,11 @@ public class ComCommands {
         });
         handler.registerCommand(new Command("map") {
             {
-                help = "Preview and download a server map in a .msav file format.";
+                help = "<mapname/mapid> Preview and download a server map in a .msav file format.";
             }
             public void run(Context ctx) {
                 if (ctx.args.length < 2) {
-                    ctx.reply("Not enough arguments, use `.downloadmap <number|name>`");
+                    ctx.reply("Not enough arguments, use `.map <mapname/mapid>`");
                     return;
                 }
 
@@ -70,29 +65,36 @@ public class ComCommands {
         });
         handler.registerCommand(new Command("players") {
             {
-                help = "Get all online players";
+                help = "Check who is online and their ids.";
             }
             public void run(Context ctx) {
-                List<String> result = new ArrayList<>();
-                result.add("There are currently " + playerGroup.size() + " players online");
+                EmbedBuilder eb = new EmbedBuilder()
+                        .setTitle("Players online: " + playerGroup.size());
                 for (Player player : playerGroup.all()) {
-                    result.add(" * " + Utils.escapeBackticks(player.name) + " (#" + player.id + ")");
+                    eb.addInlineField(Utils.escapeBackticks(player.name), " (#" + player.id + ")");
                 }
-                ctx.reply(new MessageBuilder().appendCode("", Utils.escapeBackticks(String.join("\n", result))));
+                ctx.channel.sendMessage(eb);
             }
         });
         handler.registerCommand(new Command("info") {
             {
-                help = "Get server information";
+                help = "Check basic server information.";
             }
             public void run(Context ctx) {
                 try {
-                    StringBuilder sb = new StringBuilder();
+                    EmbedBuilder eb = new EmbedBuilder()
+                            .setTitle("mindustry.io")
+                            .addInlineField("Players", String.valueOf(playerGroup.size()))
+                            .addInlineField("Map", world.getMap().name())
+                            .addInlineField("Wave", String.valueOf(state.wave))
+                            .addInlineField("Next wave in", String.valueOf(Math.round(state.wavetime / 60) + " seconds."));
+                    /*StringBuilder sb = new StringBuilder();
                     sb.append("Map: ").append(world.getMap().name()).append("\n").append("author: ").append(world.getMap().author()).append("\n");
                     sb.append("Wave: ").append(state.wave).append("\n");
                     sb.append("Enemies: ").append(state.enemies).append("\n");
                     sb.append("Players: ").append(playerGroup.size()).append('\n');
-                    ctx.reply(new MessageBuilder().appendCode("", Utils.escapeBackticks(sb.toString())));
+                    ctx.reply(new MessageBuilder().appendCode("", Utils.escapeBackticks(sb.toString())));*/
+                    ctx.channel.sendMessage(eb);
                 } catch (Exception e) {
                     System.out.println(e.getMessage());
                     e.printStackTrace();
@@ -102,7 +104,7 @@ public class ComCommands {
         });
         handler.registerCommand(new Command("resinfo") {
             {
-                help = "Get resources currently in core";
+                help = "Check the amount of resources in the core.";
             }
             public void run(Context ctx) {
                 if (!state.rules.waves) {
@@ -111,31 +113,27 @@ public class ComCommands {
                 }
                 // the normal player team is "sharded"
                 TeamData data = state.teams.get(Team.sharded);
-                // FIXME: this assumes there's only one core, perhaps sum up resources of all cores?
-                //-- Items are shared between cores, no need.
+                //-- Items are shared between cores
                 Tile core = data.cores.first();
                 ItemModule items = core.entity.items;
-                List<String> result = new ArrayList<>();
-                result.add("Items in the core:");
-                items.forEach((item, amount) -> result.add(item.name + ": " + (int)amount));
-                ctx.reply(new MessageBuilder().appendCode("", String.join("\n", result)));
+                EmbedBuilder eb = new EmbedBuilder()
+                        .setTitle("Resources in the core:");
+                items.forEach((item, amount) -> eb.addInlineField(item.name, String.valueOf(amount)));
+                ctx.channel.sendMessage(eb);
             }
         });
 
-        // TODO: add help and list commands or something
-        // primitive help command -- to be improved later
         handler.registerCommand(new Command("help") {
             {
-                help = "Display all available commands and their usage";
+                help = "Display all available commands and their usage.";
             }
             public void run(Context ctx) {
-                StringBuilder sb = new StringBuilder();
-                sb.append("```\n");
-                for(Command command : handler.getAllCommands()){
-                    sb.append(".").append(command.name).append(" : ").append(command.help).append("\n");
+                EmbedBuilder embed = new EmbedBuilder()
+                        .setTitle("All available commands:");
+                for(Command command : handler.getAllCommands()) {
+                    embed.addInlineField(command.name, command.help);
                 }
-                sb.append("```");
-                ctx.reply(new MessageBuilder().appendCode("", Utils.escapeBackticks(sb.toString())));
+                ctx.channel.sendMessage(embed);
             }
         });
     }
